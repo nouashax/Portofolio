@@ -1,0 +1,197 @@
+---
+title: "Homework - Supervised ML in R"
+author: "Grady"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Homework - Supervised ML in R
+
+First, make sure you've loaded the following libraries.
+
+```{r}
+library(tidyverse)
+library(rsample)
+#install.packages("class")
+library(class)
+#install.packages('gmodels')
+library(gmodels)
+#install.packages('caret')
+library(caret)
+#install.packages('rpart')
+library(rpart)
+#install.packages('rpart.plot')
+library(rpart.plot)
+library(ggplot2)
+```
+
+## Instruksi
+
+Pertama read file `iris_homework`
+
+```{r}
+data = readRDS('iris_homework')
+View(data)
+```
+
+Kemudian, ikuti langkah-langkah berikut:
+
+1.  Pecah data menjadi training dan test with `set.seed(100)`.
+2.  Buatlah sebuah algoritma KNN menggunakan `set.seed(1)`. Coba dari nilai k = 1 sampai k = 10. Laporkan nilai k yang memberikan akurasi tertinggi. Berikan juga nilai akurasi tertinggi yang dicapai model.
+3.  Buatlah sebuah algoritma logistic regression menggunakan `set.seed(1)`. Kolom mana saja yang memiliki p-value di bawah 0.05? Tuliskan kolom-kolom tersebut. Kemudian, buat ulang regresi logistik hanya dengan kolom-kolom dengan p-value di bawah 0.05, dan laporkan nilai akurasi tertingginya.
+
+### Tempat Mengerjakan
+
+Untuk memisahkan data menjadi train dan test, cukup jalankan cell berikut.
+
+```{r}
+# JANGAN UBAH CELL INI
+# set seed for repeatability
+set.seed(100)
+
+# create split object 
+train_test_split <- data %>% initial_split(prop = .8, strata = "Species")
+
+train_tbl <- train_test_split %>% training()
+
+test_tbl <- train_test_split %>% testing()
+
+x_train = train_tbl %>% 
+  select(Sepal.Length, Sepal.Width, Petal.Length, Petal.Width, Branch.Length, Branch.Width)
+
+y_train = train_tbl %>%
+  select(Species)
+
+x_test = test_tbl %>%
+  select(Sepal.Length, Sepal.Width, Petal.Length, Petal.Width, Branch.Length, Branch.Width)
+
+y_test = test_tbl %>%
+  select(Species)
+
+```
+
+##### KNN:
+
+```{r}
+y_pred <- knn(train = x_train,
+                        test = x_test,
+                        cl = y_train[,1,drop=TRUE],
+                        k = 3)
+
+conf_mtrix <- confusionMatrix(data = y_pred, 
+                              reference = as.factor(y_test[,1,drop=TRUE]))
+
+conf_mtrix
+```
+
+
+```{r}
+k_values = NULL
+accuracy_pred = NULL
+
+
+```
+
+```{r}
+for(i in 1:10){
+  set.seed(1)
+  y_pred <- knn(train = x_train,
+                          test = x_test,
+                          cl = y_train[,1,drop=TRUE],
+                          k = i)
+  
+  conf_mtrix <- confusionMatrix(data = y_pred, 
+                                reference = as.factor(y_test[,1,drop=TRUE]))
+  k_values <- c(k_values, i)
+  accuracy_pred <- c(accuracy_pred, conf_mtrix$overall[1])
+}
+```
+
+
+```{r}
+accuracy_data = as.data.frame(cbind(k_values, accuracy_pred))
+
+ggplot(data = accuracy_data, aes(x = k_values, y = accuracy_pred))+
+  geom_line()+
+  geom_point()+
+  scale_x_continuous(breaks = seq(1,10,by=1))
+
+
+```
+### Turns out, k=3 give the highest accuracy of 0.95
+
+
+
+##### Logistic Regression:
+
+```{r}
+model_lgr<-glm(Species~.,
+               data = train_tbl,
+               family = "binomial")
+```
+
+
+```{r}
+y_pred_lgr <- predict(model_lgr, x_test, type = 'response')
+y_pred_lgr <- ifelse(y_pred_lgr < 0.5, 0, 1)
+y_pred_lgr
+```
+
+```{r}
+conf_mtrix <- confusionMatrix(data = as.factor(y_pred_lgr), 
+                                reference = as.factor(y_test[,1,drop=TRUE]))
+
+conf_mtrix
+```
+```{r}
+summary(model_lgr)
+```
+```{r}
+x_train_logit <- x_train %>%
+  select(Petal.Length)
+
+x_test_logit <- x_test %>% 
+  select(Petal.Length)
+
+```
+```{r}
+Species_pred = train_tbl$Species
+new_data_train = cbind(x_train_logit, Species_pred)
+
+```
+
+
+```{r}
+model_lgr_2 <- glm(Species_pred~.,
+                   data = new_data_train,
+                   family = 'binomial')
+```
+```{r}
+summary(model_lgr_2)
+```
+```{r}
+y_pred_n <- predict(model_lgr_2, x_test_logit, type = 'response')
+y_pred_n <- ifelse(y_pred_n < 0.5, 0, 1)
+conf_mtrix <- confusionMatrix(data = as.factor(y_pred_n), 
+                                reference = as.factor(y_test[,1,drop=TRUE]))
+
+conf_mtrix
+```
+
+
+
+### Tempat Menjawab
+
+KNN:
+
+-   Nilai k terbaik adalah ?? 3
+
+-   Akurasi tertinggi adalah ?? 0.95 
+
+Logistic Regression:
+
+-   Kolom dengan p-value di bawah 0.05 adalah ?? Petal.Length
+
+-   Nilai akurasi tertinggi apabila melakukan logistic regression dengan kolom-kolom yang p-value nya \< 0.05 adalah ?? 0.85            
